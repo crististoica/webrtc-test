@@ -1,16 +1,54 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tic Tac Toe</title>
+    <title>WebRTC Counter</title>
+    <style>
+      #counter {
+        font-size: 2em;
+        text-align: center;
+      }
+      button {
+        font-size: 1.5em;
+        margin: 10px;
+        padding: 10px 20px;
+      }
+    </style>
   </head>
   <body>
-    <h1>Button Press Counter</h1>
-    <button id="countButton">Click Me!</button>
-    <p id="count">0</p>
-    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.3.2/dist/peerjs.min.js"></script>
-    <script src="index.js"></script>
+    <div id="counter">0</div>
+    <button id="increment">Click me!</button>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+
+      // Initialize the counter value
+      let counter = 0;
+
+      // Update the counter display with the current value
+      function updateCounterDisplay() {
+        const counterDisplay = document.getElementById('counter');
+        counterDisplay.innerText = counter;
+      }
+
+      // Increment the counter and update the display
+      function incrementCounter() {
+        counter++;
+        updateCounterDisplay();
+        // Send a message to the other peer to indicate that the counter was incremented
+        socket.emit('counter-incremented', counter);
+      }
+
+      // Handle incoming messages from the other peer
+      socket.on('counter-incremented', (newCounterValue) => {
+        counter = newCounterValue;
+        updateCounterDisplay();
+      });
+
+      // Attach the incrementCounter function to the button click event
+      document
+        .getElementById('increment')
+        .addEventListener('click', incrementCounter);
+    </script>
   </body>
 </html>
