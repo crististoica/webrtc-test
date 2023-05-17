@@ -4,23 +4,128 @@
     <meta charset="UTF-8" />
     <title>WebRTC Counter</title>
     <style>
+      :root {
+        --incr-color: #06d6a0;
+        --decr-color: #a5243d;
+        --accent-color: #26547c;
+        --bg-color: #f2f2f2;
+      }
+
       #counter {
         font-size: 2em;
         text-align: center;
       }
+
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--bg-color);
+      }
+
       button {
         font-size: 1.5em;
         margin: 10px;
         padding: 10px 20px;
+        border: none;
+        background-color: var(--accent-color);
+        border-radius: 10px;
+        color: white;
+        cursor: pointer;
+      }
+
+      #increment {
+        background-color: var(--incr-color);
+      }
+
+      #decrement {
+        background-color: var(--decr-color);
+      }
+
+      button:hover {
+        opacity: 0.7;
+      }
+
+      main {
+        max-width: 720px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+
+      input {
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-size: 1.5rem;
+      }
+
+      .counter-container {
+        display: flex;
+        align-items: center;
+        gap: 4rem;
+      }
+
+      .user-name-container {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .user-name-container > div {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .logs-container {
+        font-size: 2rem;
+        color: #50514f;
+      }
+
+      .inc-score {
+        color: var(--incr-color);
+      }
+
+      .dec-score {
+        color: var(--decr-color);
       }
     </style>
   </head>
   <body>
-    <div id="counter">0</div>
-    <button id="increment">Click me!</button>
+    <main>
+      <div id="logs" class="logs-container"></div>
+
+      <div class="counter-container">
+        <button id="increment">Increment</button>
+        <div id="counter">0</div>
+        <button id="decrement">Decrement</button>
+      </div>
+      <div class="user-name-container">
+        <div>
+          <input id="user-name" placeholder="Your name" />
+          <button id="save-user-name">Save</button>
+        </div>
+      </div>
+    </main>
     <script src="/socket.io/socket.io.js"></script>
     <script>
+      const incrementBtn = document.getElementById('increment');
+      const decrementBtn = document.getElementById('decrement');
+      const userNameInput = document.getElementById('user-name');
+      const saveUserNameBtn = document.getElementById('save-user-name');
+      const logsContainer = document.getElementById('logs');
+
+      const myScore = {
+        increment: 0,
+        decrement: 0,
+      };
+
       const socket = io();
+
+      socket.on('connect', () => {});
 
       // Initialize the counter value
       let counter = 0;
@@ -31,24 +136,57 @@
         counterDisplay.innerText = counter;
       }
 
+      function updateLogsContainer(users) {
+        logsContainer.innerHTML = '';
+        Object.keys(users).forEach((k) => {
+          const p = document.createElement('p');
+          p.innerHTML = `${users[k].name || 'no-name'}: increment: <span class="inc-score">${users[k].score.increment}</span> | decrement: <span class="dec-score">${users[k].score.decrement}</span>`;
+          logsContainer.appendChild(p);
+        });
+      }
+
+      function saveUserName() {
+        const userName = userNameInput.value;
+        socket.emit('set-user-name', userName);
+      }
+
       // Increment the counter and update the display
       function incrementCounter() {
         counter++;
+        myScore.increment++;
         updateCounterDisplay();
         // Send a message to the other peer to indicate that the counter was incremented
-        socket.emit('counter-incremented', counter);
+        socket.emit('counter-incremented', { counter, score: myScore });
+      }
+
+      function decrementCounter() {
+        counter--;
+        myScore.decrement++;
+        updateCounterDisplay();
+        // Send a message to the other peer to indicate that the counter was incremented
+        socket.emit('counter-decremented', { counter, score: myScore });
       }
 
       // Handle incoming messages from the other peer
-      socket.on('counter-incremented', (newCounterValue) => {
-        counter = newCounterValue;
+      socket.on('counter-incremented', ({ counter: newCounter, users }) => {
+        counter = newCounter;
         updateCounterDisplay();
+        updateLogsContainer(users);
       });
 
-      // Attach the incrementCounter function to the button click event
-      document
-        .getElementById('increment')
-        .addEventListener('click', incrementCounter);
+      socket.on('counter-decremented', ({ counter: newCounter, users }) => {
+        counter = newCounter;
+        updateCounterDisplay();
+        updateLogsContainer(users);
+      });
+
+      socket.on('users', (users) => {
+        updateLogsContainer(users);
+      });
+
+      incrementBtn.addEventListener('click', incrementCounter);
+      decrementBtn.addEventListener('click', decrementCounter);
+      saveUserNameBtn.addEventListener('click', saveUserName);
     </script>
   </body>
 </html>

@@ -13,6 +13,7 @@ app.get('/socket.io/socket.io.js', (req, res) => {
 
 // Keep track of connected peers
 let peers = [];
+const users = {};
 
 // Handle new connections
 io.on('connection', (socket) => {
@@ -28,9 +29,40 @@ io.on('connection', (socket) => {
   }
 
   // Handle counter increment messages
-  socket.on('counter-incremented', (newCounterValue) => {
+  socket.on('counter-incremented', ({ counter, score }) => {
     // Broadcast the new counter value to all connected peers
-    socket.broadcast.emit('counter-incremented', newCounterValue);
+    users[socket.id] = {
+      ...users[socket.id],
+      score,
+    };
+    io.emit('counter-incremented', {
+      counter,
+      users,
+    });
+  });
+
+  socket.on('counter-decremented', ({ counter, score }) => {
+    // Broadcast the new counter value to all connected peers
+    users[socket.id] = {
+      ...users[socket.id],
+      score,
+    };
+    io.emit('counter-incremented', {
+      counter,
+      users,
+    });
+  });
+
+  socket.on('set-user-name', (userName) => {
+    users[socket.id] = {
+      name: userName,
+      score: {
+        increment: 0,
+        decrement: 0,
+      },
+    };
+
+    io.emit('users', users);
   });
 
   // Handle disconnections
@@ -38,6 +70,8 @@ io.on('connection', (socket) => {
     console.log('A user disconnected:', socket.id);
     // Remove the disconnected peer from the list
     peers = peers.filter((peer) => peer !== socket.id);
+    delete users[socket.id];
+    io.emit('users', users);
   });
 });
 
